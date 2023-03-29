@@ -2,11 +2,12 @@ package worker
 
 import (
 	"async/utils"
+
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
 
-func SpawnActivityWorker(queueName string, activity any, workflow any) {
+func SpawnActivityWorker(queueName string, workflows []any, activity any) {
 	c, err := client.Dial(client.Options{})
 	if err != nil {
 		utils.LogRed(err)
@@ -16,23 +17,11 @@ func SpawnActivityWorker(queueName string, activity any, workflow any) {
 
 	w := worker.New(c, queueName, worker.Options{})
 	w.RegisterActivity(activity)
-	w.RegisterWorkflow(workflow)
-
-	err = w.Run(worker.InterruptCh())
-	if err != nil {
-		utils.LogRed("error running a worker:", err)
+	utils.LogDebug("serving activity:", activity)
+	for _, wf := range workflows {
+		utils.LogDebug("associated workflow:", wf)
+		w.RegisterWorkflow(wf)
 	}
-}
-
-func SpawnWorkflowWorker(queueName string, workflow interface{}) {
-	c, err := client.Dial(client.Options{})
-	if err != nil {
-		utils.LogRed(err)
-	}
-	defer c.Close()
-
-	w := worker.New(c, queueName, worker.Options{})
-	w.RegisterWorkflow(workflow)
 
 	err = w.Run(worker.InterruptCh())
 	if err != nil {

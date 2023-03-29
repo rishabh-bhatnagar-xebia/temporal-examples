@@ -16,30 +16,36 @@ func main() {
 		utils.LogRed("worker type and queue type must be specified, exitting")
 		os.Exit(1)
 	}
-	queueType := os.Args[2]
-	workerName := os.Args[1]
-	var workflow any
 
+	queueType := os.Args[2]
+	var wfs []any
 	var queueName string
 	switch queueType {
 	case "basic":
 		queueName = shared.QueueNameBasic
-		workflow = workflows.Basic
+		wfs = []any{workflows.Basic}
 	case "async_v1":
 		queueName = shared.QueueNameAsyncV1
-		workflow = workflows.AsyncWithChild
+		wfs = []any{workflows.AsyncWithChild, workflows.GitWorkflow}
+	case "async_v2":
+		queueName = shared.QueueNameAsyncV2
+		wfs = []any{workflows.AsyncWithQueries}
 	default:
 		utils.LogRed(fmt.Sprintf("unknown queue type %s", queueType))
 		os.Exit(1)
 	}
 
+	workerName := os.Args[1]
+	var activity any
 	switch strings.ToLower(workerName) {
 	case "db":
-		custom_worker.SpawnActivityWorker(queueName, activities.WriteToDB, workflow)
+		activity = activities.WriteToDB
 	case "git":
-		custom_worker.SpawnActivityWorker(queueName, activities.WriteToGit, workflow)
+		activity = activities.WriteToGit
 	default:
 		utils.LogRed(fmt.Sprintf("unknown activity/workflow %s", workerName))
 		os.Exit(1)
 	}
+
+	custom_worker.SpawnActivityWorker(queueName, wfs, activity)
 }
