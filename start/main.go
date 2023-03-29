@@ -1,46 +1,34 @@
 package main
 
 import (
+	"async/activities"
 	"async/shared"
 	"async/utils"
 	"async/workflows"
-	"context"
-	"fmt"
 	"go.temporal.io/sdk/client"
-	"os"
+	"go.temporal.io/sdk/worker"
 )
 
-func TriggerWorkflow[workflowOutVar any](queueName string, workflow any) workflowOutVar {
-	utils.LogDebug("will be triggering a workflow on", queueName, "queue")
+func SpawnActivityWorker(queueName string) {
+	utils.LogGreen("spawning worker on", queueName)
 	c, err := client.Dial(client.Options{})
 	if err != nil {
 		utils.LogRed(err)
-		os.Exit(1)
+		return
 	}
 	defer c.Close()
 
-	input := shared.WorkflowIn{Data: "this is the input data to be persisted"}
-	options := client.StartWorkflowOptions{
-		ID:        "random-id",
-		TaskQueue: queueName,
-	}
+	w := worker.New(c, queueName, worker.Options{})
+	w.RegisterWorkflow(workflows.GitWorkflow)
+	w.RegisterWorkflow(workflows.AsyncWithChild)
+	w.RegisterActivity(activities.WriteToGit)
 
-	run, err := c.ExecuteWorkflow(context.Background(), options, workflow, input)
+	err = w.Run(worker.InterruptCh())
 	if err != nil {
-		utils.LogDebug(err)
+		utils.LogRed("error running a worker:", err)
 	}
-
-	var result workflowOutVar
-	err = run.Get(context.Background(), &result)
-	if err != nil {
-		utils.LogRed("unable to get workflow result", err)
-		return result
-	}
-	return result
 }
 
 func main() {
-	res := TriggerWorkflow[shared.WorkflowBasicOut](shared.QueueNameBasic, workflows.Basic)
-	fmt.Println(res.DBOut.ID)
-	fmt.Println(res.GitOut.ID)
+	SpawnActivityWorker(shared.QueueNameAsyncV1)
 }

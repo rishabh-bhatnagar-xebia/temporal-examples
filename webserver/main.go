@@ -7,39 +7,37 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go.temporal.io/sdk/client"
 	"net/http"
+
+	"go.temporal.io/sdk/client"
 )
-
-func TriggerWorkflow[workflowOutVar any](queueName string, workflow any) (workflowOutVar, error) {
-	utils.LogDebug("will be triggering a workflow on", queueName, "queue")
-	c, err := client.Dial(client.Options{})
-	if err != nil {
-		utils.LogRed(err)
-	}
-	defer c.Close()
-
-	input := shared.WorkflowIn{Data: "this is the input data to be persisted"}
-	options := client.StartWorkflowOptions{
-		ID:        "random-id",
-		TaskQueue: queueName,
-	}
-
-	run, err := c.ExecuteWorkflow(context.Background(), options, workflow, input)
-	if err != nil {
-		utils.LogDebug(err)
-	}
-
-	var result workflowOutVar
-	err = run.Get(context.Background(), &result)
-	if err != nil {
-		utils.LogRed("unable to get workflow result", err)
-	}
-	return result, err
-}
 
 func main() {
 	router := http.NewServeMux()
+	router.HandleFunc("/query", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if !q.Has("run_id") {
+			http.Error(w, "expected run_id as a param in the url", http.StatusBadRequest)
+			return
+		}
+		runId := q.Get("run_id")
+
+		c, err := client.Dial(client.Options{})
+		if err != nil {
+			utils.LogRed(err)
+		}
+		defer c.Close()
+
+		resp, err := c.QueryWorkflowWithOptions(context.Background(), &client.QueryWorkflowWithOptionsRequest{
+			WorkflowID: "worker-async_v2",
+			RunID:      runId,
+			QueryType:  "current_state",
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		utils.LogGreen(resp, "is the resp")
+	})
 	router.HandleFunc("/workflow", func(w http.ResponseWriter, r *http.Request) {
 		pathQuery := r.URL.Query()
 		if !pathQuery.Has(shared.HttpWorkflowTypeParamName) {
@@ -50,7 +48,8 @@ func main() {
 		workflowType := pathQuery.Get(shared.HttpWorkflowTypeParamName)
 		switch workflowType {
 		case "basic":
-			result, err := TriggerWorkflow[shared.WorkflowBasicOut](shared.QueueNameBasic, workflows.Basic)
+			utils.LogDebug("triggering a Basic workflow")
+			result, err := TriggerWorkflow[shared.WorkflowBasicOut](shared.QueueNameBasic, workflows.Basic, workflowType)
 			utils.LogGreen(fmt.Sprintf("DB Output:%+v", *result.DBOut))
 			utils.LogGreen(fmt.Sprintf("Git Output:%+v", *result.GitOut))
 			if err != nil {
@@ -59,7 +58,17 @@ func main() {
 			out, _ := json.Marshal(result)
 			_, _ = w.Write(out)
 		case "async_v1":
-			result, err := TriggerWorkflow[shared.WorkflowAsyncV1Out](shared.QueueNameAsyncV1, workflows.AsyncWithChild)
+			utils.LogDebug("triggering a AsyncWithChild workflow")
+			result, err := TriggerWorkflow[shared.WorkflowAsyncV1Out](shared.QueueNameAsyncV1, workflows.AsyncWithChild, workflowType)
+			if err != nil {
+				utils.LogRed(err)
+			}
+			utils.LogGreen(fmt.Sprintf("DB Output:%+v", *result.DBOut))
+			out, _ := json.Marshal(result)
+			_, _ = w.Write(out)
+		case "async_v2":
+			utils.LogDebug("triggering a AsyncWithQueries workflow")
+			result, err := TriggerWorkflow[shared.WorkflowAsyncV1Out](shared.QueueNameAsyncV2, workflows.AsyncWithQueries, workflowType)
 			if err != nil {
 				utils.LogRed(err)
 			}

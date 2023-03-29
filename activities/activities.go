@@ -6,6 +6,8 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -15,9 +17,10 @@ func WriteToDB(ctx context.Context, data shared.WorkflowIn) (shared.DBOut, error
 	return shared.DBOut{ID: "dbId: " + id.String()}, err
 }
 
-func WriteToGit(ctx context.Context, data shared.WorkflowIn, dbOut shared.DBOut) (shared.GitOut, error) {
+func WriteToGit(ctx context.Context, data shared.WorkflowIn, dbOut shared.DBOut, waitFor time.Duration) (shared.GitOut, error) {
 	utils.LogDebug("data will be read from", dbOut)
 	utils.LogDebug("writing", data.Data, "to git")
+	time.Sleep(waitFor)
 	hash := sha1.Sum([]byte(data.Data))
 	return shared.GitOut{ID: fmt.Sprintf("%x", hash)}, nil
 }
