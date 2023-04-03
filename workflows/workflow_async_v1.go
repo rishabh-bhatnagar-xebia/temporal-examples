@@ -19,7 +19,7 @@ func AsyncWithChild(ctx workflow.Context, data shared.WorkflowIn) (shared.Workfl
 	// Writing to DB
 	utils.LogDebug("WORKFLOW:", "calling the db activity")
 	var dbOut shared.DBOut
-	err := workflow.ExecuteActivity(ctx, activities.WriteToDB, data).Get(ctx, &dbOut)
+	err := workflow.ExecuteActivity(ctx, activities.WriteToDB, data, time.Second*0).Get(ctx, &dbOut)
 	if err != nil {
 		utils.LogRed("WORKFLOW:", err)
 		return shared.WorkflowAsyncV1Out{}, err

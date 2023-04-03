@@ -8,11 +8,105 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"go.temporal.io/sdk/client"
 )
 
+func TriggerWorkflow[workflowOutVar any](queueName string, workflow any, workerName string) (workflowOutVar, error) {
+	utils.LogDebug("will be triggering a workflow on", queueName, "queue")
+	c, err := client.Dial(client.Options{})
+	if err != nil {
+		utils.LogRed(err)
+	}
+	defer c.Close()
+
+	workflowId := "worker-" + workerName
+	utils.LogDebug(workflowId, "is the workflow id")
+	input := shared.WorkflowIn{Data: "this is the input data to be persisted"}
+	options := client.StartWorkflowOptions{
+		ID:        workflowId,
+		TaskQueue: queueName,
+	}
+
+	run, err := c.ExecuteWorkflow(context.Background(), options, workflow, input)
+	if err != nil {
+		utils.LogDebug(err)
+	}
+	utils.LogGreen("Run ID:", run.GetRunID())
+
+	var result workflowOutVar
+	err = run.Get(context.Background(), &result)
+	if err != nil {
+		utils.LogRed("unable to get workflow result", err)
+	}
+	return result, err
+}
+
+func TriggerWorkflowAsync2(queueName string, workflow any, workerName string, data string) (shared.WorkflowAsyncV2Out, error) {
+	utils.LogDebug("will be triggering a workflow on", queueName, "queue")
+	c, err := client.Dial(client.Options{})
+	if err != nil {
+		utils.LogRed(err)
+	}
+	defer c.Close()
+
+	workflowId := "worker-" + workerName
+	utils.LogDebug(workflowId, "is the workflow id")
+	input := shared.WorkflowIn{Data: data}
+	options := client.StartWorkflowOptions{
+		ID:        workflowId,
+		TaskQueue: queueName,
+	}
+
+	run, err := c.ExecuteWorkflow(context.Background(), options, workflow, input)
+	if err != nil {
+		utils.LogDebug(err)
+	}
+	utils.LogGreen("Run ID:", run.GetRunID())
+
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	var result shared.WorkflowAsyncV2Out
+	for range ticker.C {
+		query := "current_state"
+		resp, err := c.QueryWorkflow(context.Background(), workflowId, run.GetRunID(), query)
+		if err != nil {
+			utils.LogRed(err)
+			continue
+		}
+		if !resp.HasValue() {
+			continue
+		}
+		var state shared.WorkflowAsyncV2Status
+		if err := resp.Get(&state); err != nil {
+			utils.LogRed(err)
+			continue
+		}
+		printResult(state)
+		if state.Completed || state.Result.DBOut != nil {
+			result = state.Result
+			break
+		}
+	}
+	return result, err
+}
+
+func printResult(state shared.WorkflowAsyncV2Status) {
+	out := ""
+	dbOut := &out
+	if state.Result.DBOut != nil {
+		dbOut = &state.Result.DBOut.ID
+	}
+	gitOut := &out
+	if state.Result.GitOut != nil {
+		gitOut = &state.Result.GitOut.ID
+	}
+	utils.LogGreen("current status:", fmt.Sprintf("{DBID: %+v; GitID: %+v}", *dbOut, *gitOut))
+}
+
 func main() {
+	data := "this is the input data to be persisted"
 	router := http.NewServeMux()
 	router.HandleFunc("/query", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
@@ -68,11 +162,11 @@ func main() {
 			_, _ = w.Write(out)
 		case "async_v2":
 			utils.LogDebug("triggering a AsyncWithQueries workflow")
-			result, err := TriggerWorkflow[shared.WorkflowAsyncV1Out](shared.QueueNameAsyncV2, workflows.AsyncWithQueries, workflowType)
+			result, err := TriggerWorkflowAsync2(shared.QueueNameAsyncV2, workflows.AsyncWithQueries, workflowType, data)
 			if err != nil {
 				utils.LogRed(err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
-			utils.LogGreen(fmt.Sprintf("DB Output:%+v", *result.DBOut))
 			out, _ := json.Marshal(result)
 			_, _ = w.Write(out)
 		default:

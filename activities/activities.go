@@ -11,9 +11,10 @@ import (
 	"github.com/google/uuid"
 )
 
-func WriteToDB(ctx context.Context, data shared.WorkflowIn) (shared.DBOut, error) {
+func WriteToDB(ctx context.Context, data shared.WorkflowIn, waitFor time.Duration) (shared.DBOut, error) {
 	utils.LogDebug("writing", data, "to the database")
 	id, err := uuid.NewUUID()
+	time.Sleep(waitFor)
 	return shared.DBOut{ID: "dbId: " + id.String()}, err
 }
 

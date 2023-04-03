@@ -18,6 +18,12 @@ type WorkflowAsyncV2Out struct {
 	GitOut *GitOut
 }
 
+type WorkflowAsyncV2Status struct {
+	Status    string
+	Completed bool
+	Result    WorkflowAsyncV2Out
+}
+
 type DBOut struct {
 	ID string
 }
