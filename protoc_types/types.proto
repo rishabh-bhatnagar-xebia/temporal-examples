@@ -1,0 +1,34 @@
+syntax = "proto2";
+
+package workflowtype;
+
+message WorkflowIn {
+  required string Data = 1;
+}
+
+message WorkflowBasicOut {
+  required DBOut DBOut = 1;
+  required GitOut GitOut = 2;
+}
+
+message WorkflowAsyncV1Out {
+  required DBOut DBOut = 1;
+}
+
+message WorkflowAsyncV2Out {
+  required DBOut  DBOut = 1;
+}
+
+message WorkflowAsyncV2Status {
+  required string Status = 1;
+  required bool Completed = 2;
+  required WorkflowAsyncV2Out Result = 3;
+}
+
+message DBOut {
+  required string  ID = 1;
+}
+
+message GitOut {
+  required string ID = 1;
+}

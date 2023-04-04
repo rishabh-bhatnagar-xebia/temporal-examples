@@ -1,7 +1,7 @@
 package activities
 
 import (
-	"async/shared"
+	workflowtype "async/protoc_types"
 	"async/utils"
 	"context"
 	"crypto/sha1"
@@ -11,17 +11,21 @@ import (
 	"github.com/google/uuid"
 )
 
-func WriteToDB(ctx context.Context, data shared.WorkflowIn, waitFor time.Duration) (shared.DBOut, error) {
+func WriteToDB(ctx context.Context, data workflowtype.WorkflowIn, waitFor time.Duration) (workflowtype.DBOut, error) {
 	utils.LogDebug("writing", data, "to the database")
 	id, err := uuid.NewUUID()
 	time.Sleep(waitFor)
-	return shared.DBOut{ID: "dbId: " + id.String()}, err
+	idS := id.String()
+	utils.LogGreen("completed the db activity")
+	return workflowtype.DBOut{ID: &idS}, err
 }
 
-func WriteToGit(ctx context.Context, data shared.WorkflowIn, dbOut shared.DBOut, waitFor time.Duration) (shared.GitOut, error) {
+func WriteToGit(ctx context.Context, data workflowtype.WorkflowIn, dbOut workflowtype.DBOut, waitFor time.Duration) (workflowtype.GitOut, error) {
 	utils.LogDebug("data will be read from", dbOut)
 	utils.LogDebug("writing", data.Data, "to git")
 	time.Sleep(waitFor)
-	hash := sha1.Sum([]byte(data.Data))
-	return shared.GitOut{ID: fmt.Sprintf("%x", hash)}, nil
+	hash := sha1.Sum([]byte(*data.Data))
+	hashString := fmt.Sprintf("%x", hash)
+	utils.LogGreen("completed the git activity")
+	return workflowtype.GitOut{ID: &hashString}, nil
 }

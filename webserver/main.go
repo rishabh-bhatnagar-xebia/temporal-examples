@@ -1,6 +1,7 @@
 package main
 
 import (
+	workflowtype "async/protoc_types"
 	"async/shared"
 	"async/utils"
 	"async/workflows"
@@ -23,7 +24,8 @@ func TriggerWorkflow[workflowOutVar any](queueName string, workflow any, workerN
 
 	workflowId := "worker-" + workerName
 	utils.LogDebug(workflowId, "is the workflow id")
-	input := shared.WorkflowIn{Data: "this is the input data to be persisted"}
+	data := "this is the input data to be persisted"
+	input := workflowtype.WorkflowIn{Data: &data}
 	options := client.StartWorkflowOptions{
 		ID:        workflowId,
 		TaskQueue: queueName,
@@ -43,7 +45,7 @@ func TriggerWorkflow[workflowOutVar any](queueName string, workflow any, workerN
 	return result, err
 }
 
-func TriggerWorkflowAsync2(queueName string, workflow any, workerName string, data string) (shared.WorkflowAsyncV2Out, error) {
+func TriggerWorkflowAsync2(queueName string, workflow any, workerName string, data string) (workflowtype.WorkflowAsyncV2Out, error) {
 	utils.LogDebug("will be triggering a workflow on", queueName, "queue")
 	c, err := client.Dial(client.Options{})
 	if err != nil {
@@ -53,7 +55,7 @@ func TriggerWorkflowAsync2(queueName string, workflow any, workerName string, da
 
 	workflowId := "worker-" + workerName
 	utils.LogDebug(workflowId, "is the workflow id")
-	input := shared.WorkflowIn{Data: data}
+	input := workflowtype.WorkflowIn{Data: &data}
 	options := client.StartWorkflowOptions{
 		ID:        workflowId,
 		TaskQueue: queueName,
@@ -67,7 +69,7 @@ func TriggerWorkflowAsync2(queueName string, workflow any, workerName string, da
 
 	ticker := time.NewTicker(10 * time.Millisecond)
 	defer ticker.Stop()
-	var result shared.WorkflowAsyncV2Out
+	var result workflowtype.WorkflowAsyncV2Out
 	for range ticker.C {
 		query := "current_state"
 		resp, err := c.QueryWorkflow(context.Background(), workflowId, run.GetRunID(), query)
@@ -78,30 +80,27 @@ func TriggerWorkflowAsync2(queueName string, workflow any, workerName string, da
 		if !resp.HasValue() {
 			continue
 		}
-		var state shared.WorkflowAsyncV2Status
+		var state workflowtype.WorkflowAsyncV2Status
 		if err := resp.Get(&state); err != nil {
 			utils.LogRed(err)
 			continue
 		}
 		printResult(state)
-		if state.Completed || state.Result.DBOut != nil {
-			result = state.Result
+		if *state.Completed || (state.Result != nil && state.Result.DBOut != nil) {
+			result = *state.Result
 			break
 		}
 	}
 	return result, err
 }
 
-func printResult(state shared.WorkflowAsyncV2Status) {
+func printResult(state workflowtype.WorkflowAsyncV2Status) {
 	out := ""
 	dbOut := &out
 	if state.Result.DBOut != nil {
-		dbOut = &state.Result.DBOut.ID
+		dbOut = state.Result.DBOut.ID
 	}
 	gitOut := &out
-	if state.Result.GitOut != nil {
-		gitOut = &state.Result.GitOut.ID
-	}
 	utils.LogGreen("current status:", fmt.Sprintf("{DBID: %+v; GitID: %+v}", *dbOut, *gitOut))
 }
 
@@ -143,7 +142,7 @@ func main() {
 		switch workflowType {
 		case "basic":
 			utils.LogDebug("triggering a Basic workflow")
-			result, err := TriggerWorkflow[shared.WorkflowBasicOut](shared.QueueNameBasic, workflows.Basic, workflowType)
+			result, err := TriggerWorkflow[workflowtype.WorkflowBasicOut](shared.QueueNameBasic, workflows.Basic, workflowType)
 			utils.LogGreen(fmt.Sprintf("DB Output:%+v", *result.DBOut))
 			utils.LogGreen(fmt.Sprintf("Git Output:%+v", *result.GitOut))
 			if err != nil {
@@ -153,7 +152,7 @@ func main() {
 			_, _ = w.Write(out)
 		case "async_v1":
 			utils.LogDebug("triggering a AsyncWithChild workflow")
-			result, err := TriggerWorkflow[shared.WorkflowAsyncV1Out](shared.QueueNameAsyncV1, workflows.AsyncWithChild, workflowType)
+			result, err := TriggerWorkflow[workflowtype.WorkflowAsyncV1Out](shared.QueueNameAsyncV1, workflows.AsyncWithChild, workflowType)
 			if err != nil {
 				utils.LogRed(err)
 			}
