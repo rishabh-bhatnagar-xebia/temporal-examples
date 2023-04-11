@@ -1,9 +1,9 @@
 package workflows
 
 import (
-	"async/activities"
-	workflowtype "async/protoc_types"
-	"async/utils"
+	"learn_temporal/activities"
+	"learn_temporal/utils"
+	"learn_temporal/workflowtype"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -22,9 +22,15 @@ func Basic(ctx workflow.Context, data workflowtype.WorkflowIn) (workflowtype.Wor
 	}
 	utils.LogDebug("WORKFLOW;", "db out", dbOut)
 
+	encoded := workflow.SideEffect(ctx, func(ctx workflow.Context) interface{} {
+		return activities.GitSideEffect(*data.Data)
+	})
+	var sideEffectValue string
+	encoded.Get(&sideEffectValue)
+
 	utils.LogDebug("WORKFLOW;", "calling the git activity")
 	// Storing To Git
-	var gitOut workflowtype.GitOut
+	var gitOut workflowtype.GitOutWithSideEffect
 	err = workflow.ExecuteActivity(ctx, activities.WriteToGit, data, dbOut, time.Second*3).Get(ctx, &gitOut)
 	if err != nil {
 		utils.LogRed("WORKFLOW;", err)
@@ -33,6 +39,9 @@ func Basic(ctx workflow.Context, data workflowtype.WorkflowIn) (workflowtype.Wor
 
 	utils.LogGreen("WORKFLOW;", "completed the workflow")
 	return workflowtype.WorkflowBasicOut{
-		DBOut: &dbOut, GitOut: &gitOut,
+		DBOut: &dbOut, GitOut: &workflowtype.GitOutWithSideEffect{
+			GitOut:        gitOut.GitOut,
+			SideEffectOut: &workflowtype.SideEffectOut{Out: &sideEffectValue},
+		},
 	}, err
 }

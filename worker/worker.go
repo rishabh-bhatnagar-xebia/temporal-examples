@@ -1,7 +1,7 @@
 package worker
 
 import (
-	"async/utils"
+	"learn_temporal/utils"
 
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"

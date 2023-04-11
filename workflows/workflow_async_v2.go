@@ -1,9 +1,9 @@
 package workflows
 
 import (
-	"async/activities"
-	workflowtype "async/protoc_types"
-	"async/utils"
+	"learn_temporal/activities"
+	"learn_temporal/utils"
+	"learn_temporal/workflowtype"
 	"time"
 
 	"go.temporal.io/sdk/workflow"

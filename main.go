@@ -1,12 +1,12 @@
 package main
 
 import (
-	"async/activities"
-	"async/shared"
-	"async/utils"
-	custom_worker "async/worker"
-	"async/workflows"
 	"fmt"
+	"learn_temporal/activities"
+	"learn_temporal/shared"
+	"learn_temporal/utils"
+	custom_worker "learn_temporal/worker"
+	"learn_temporal/workflows"
 	"os"
 	"strings"
 )

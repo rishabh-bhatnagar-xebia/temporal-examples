@@ -1,14 +1,15 @@
 package main
 
 import (
-	workflowtype "async/protoc_types"
-	"async/shared"
-	"async/utils"
-	"async/workflows"
 	"context"
 	"encoding/json"
 	"fmt"
+	"learn_temporal/shared"
+	"learn_temporal/utils"
+	"learn_temporal/workflows"
+	workflowtype "learn_temporal/workflowtype"
 	"net/http"
+	"os"
 	"time"
 
 	"go.temporal.io/sdk/client"
@@ -31,9 +32,12 @@ func TriggerWorkflow[workflowOutVar any](queueName string, workflow any, workerN
 		TaskQueue: queueName,
 	}
 
+	// fmt.Println("before shared.C *****************************")
+	// fmt.Println("shared.C", shared.C.Get(), shared.C.Get())
 	run, err := c.ExecuteWorkflow(context.Background(), options, workflow, input)
 	if err != nil {
 		utils.LogDebug(err)
+		os.Exit(0)
 	}
 	utils.LogGreen("Run ID:", run.GetRunID())
 
@@ -152,7 +156,7 @@ func main() {
 			_, _ = w.Write(out)
 		case "async_v1":
 			utils.LogDebug("triggering a AsyncWithChild workflow")
-			result, err := TriggerWorkflow[workflowtype.WorkflowAsyncV1Out](shared.QueueNameAsyncV1, workflows.AsyncWithChild, workflowType)
+			result, err := TriggerWorkflow[workflowtype.WorkflowAsyncV1Out](shared.QueueNameAsyncV1, workflows.AsyncWithChild, data)
 			if err != nil {
 				utils.LogRed(err)
 			}

@@ -1,10 +1,10 @@
 package workflows
 
 import (
-	"async/activities"
-	workflowtype "async/protoc_types"
-	"async/shared"
-	"async/utils"
+	"learn_temporal/activities"
+	"learn_temporal/shared"
+	"learn_temporal/utils"
+	"learn_temporal/workflowtype"
 	"time"
 
 	"go.temporal.io/api/enums/v1"

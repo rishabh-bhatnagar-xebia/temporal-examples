@@ -1,10 +1,11 @@
 package main
 
 import (
-	"async/activities"
-	"async/shared"
-	"async/utils"
-	"async/workflows"
+	"learn_temporal/activities"
+	"learn_temporal/shared"
+	"learn_temporal/utils"
+	"learn_temporal/workflows"
+
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
