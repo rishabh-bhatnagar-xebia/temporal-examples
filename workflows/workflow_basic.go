@@ -22,15 +22,9 @@ func Basic(ctx workflow.Context, data workflowtype.WorkflowIn) (workflowtype.Wor
 	}
 	utils.LogDebug("WORKFLOW;", "db out", dbOut)
 
-	encoded := workflow.SideEffect(ctx, func(ctx workflow.Context) interface{} {
-		return activities.GitSideEffect(*data.Data)
-	})
-	var sideEffectValue string
-	encoded.Get(&sideEffectValue)
-
 	utils.LogDebug("WORKFLOW;", "calling the git activity")
 	// Storing To Git
-	var gitOut workflowtype.GitOutWithSideEffect
+	var gitOut workflowtype.GitOut
 	err = workflow.ExecuteActivity(ctx, activities.WriteToGit, data, dbOut, time.Second*3).Get(ctx, &gitOut)
 	if err != nil {
 		utils.LogRed("WORKFLOW;", err)
@@ -39,9 +33,7 @@ func Basic(ctx workflow.Context, data workflowtype.WorkflowIn) (workflowtype.Wor
 
 	utils.LogGreen("WORKFLOW;", "completed the workflow")
 	return workflowtype.WorkflowBasicOut{
-		DBOut: &dbOut, GitOut: &workflowtype.GitOutWithSideEffect{
-			GitOut:        gitOut.GitOut,
-			SideEffectOut: &workflowtype.SideEffectOut{Out: &sideEffectValue},
-		},
+		DBOut:  &dbOut,
+		GitOut: &gitOut,
 	}, err
 }
