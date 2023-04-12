@@ -30,6 +30,9 @@ func main() {
 	case "async_v2":
 		queueName = shared.QueueNameAsyncV2
 		wfs = []any{workflows.AsyncWithQueries}
+	case "sideeffects":
+		queueName = shared.QueueNameSideEffect
+		wfs = []any{workflows.WithSideEffects}
 	default:
 		utils.LogRed(fmt.Sprintf("unknown queue type %s", queueType))
 		os.Exit(1)
@@ -42,6 +45,8 @@ func main() {
 		activity = activities.WriteToDB
 	case "git":
 		activity = activities.WriteToGit
+	case "db_with_sideeffects":
+		activity = activities.WriteToDBWithSideEffect
 	default:
 		utils.LogRed(fmt.Sprintf("unknown activity/workflow %s", workerName))
 		os.Exit(1)

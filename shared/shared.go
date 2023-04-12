@@ -5,7 +5,9 @@ import "fmt"
 var QueueNameBasic = "QUEUE_BASIC"
 var QueueNameAsyncV1 = "QUEUE_ASYNC_V1"
 var QueueNameAsyncV2 = "QUEUE_ASYNC_V2"
+var QueueNameSideEffect = "QUEUE_SIDE_EFFECT"
 var HttpWorkflowTypeParamName = "type"
+var HttpWorkflowDataParamName = "data"
 
 type Counter struct {
 	count int
